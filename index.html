@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>목동 상담 업무 가이드</title>
+<style>
+:root{font-family:Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif;color:#25304b;background:#f5f3ee}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
+main{background:#fff;border:1px solid #e7e1d7;border-radius:22px;box-shadow:0 18px 55px #25304b1c;padding:36px;max-width:440px;width:100%}
+small{color:#7a8493;letter-spacing:1px;font-weight:700}h1{font-size:24px;margin:12px 0 12px}p{font-size:14px;line-height:1.7;color:#586378}label{display:block;font-weight:700;margin:22px 0 9px;font-size:13px}input{width:100%;padding:14px;border:1px solid #cfd6e0;border-radius:12px;font:inherit}input:focus{outline:3px solid #dbe7f7}button{border:0;border-radius:12px;width:100%;background:#253d65;color:white;font:inherit;font-weight:700;padding:14px;margin-top:14px;cursor:pointer}button:disabled{opacity:.5}#status{min-height:22px;font-size:13px;color:#b04141;margin:10px 0 0}
+</style></head><body><main>
+<small>상담 · COUNSELING GUIDE</small><h1>목동 상담 업무 가이드</h1>
+<p>상담 업무 통합 매뉴얼입니다. 허가된 직원만 열람해 주세요. 이 페이지는 비밀번호가 일치할 때에만 암호화된 자료를 브라우저에서 복호화합니다.</p>
+<form id="unlock"><label for="pw">접근 비밀번호</label><input id="pw" type="password" placeholder="비밀번호 입력" autocomplete="off" required><button id="btn">매뉴얼 열기</button><p id="status" aria-live="polite"></p></form>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const bytes=b64=>Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+$('unlock').addEventListener('submit',async e=>{
+ e.preventDefault();$('btn').disabled=true;$('status').textContent='암호화된 매뉴얼을 확인하고 있습니다.';
+ try{
+  if(!crypto.subtle) throw Error('HTTPS 연결이 필요합니다.');
+  const res=await fetch('./content.enc.json',{cache:'no-store'}); if(!res.ok) throw Error('파일을 불러올 수 없습니다.');
+  const data=await res.json();
+  const pass=$('pw').value;
+  const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(data.salt),iterations:data.iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
+  const html=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(data.iv),additionalData:new TextEncoder().encode('counseling-guide-v2')},key,bytes(data.content));
+  const text=new TextDecoder('utf-8',{fatal:true}).decode(html);
+  document.open();document.write(text);document.close();
+ }catch(err){$('status').textContent=err.message.includes('HTTPS')?err.message:'비밀번호가 틀리거나 파일을 불러올 수 없습니다.';}
+ finally{const button=$('btn');if(button)button.disabled=false;}
+});
+</script></body></html>
